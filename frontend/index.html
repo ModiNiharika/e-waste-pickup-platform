@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Eco-Collect | E-Waste Rewards</title>
+    <!-- Importing a beautiful modern font from Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!--Connecting our CSS file-->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="container">
+        <!--Hero Section -->
+        <header class="hero">
+            <h1>Recycle E-waste. <span class="highlight"> <br>Earn Rewards.</span></h1>
+            <p> Schedule a free doorstep pickup for your old electronics and get rewarded instantly. </p>
+        </header>
+
+        <!-- Main Form Section -->
+        <main class="card glass">
+            <div id="form-section">
+                <h2>Schedule a Pickup</h2>
+                <form id="pickup-form">
+                    <div class="input-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" required placeholder="John Doe">
+                    </div>
+                    <div class="input-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" required placeholder="1234567890">
+                    </div>
+                    <div class="input-group">
+                        <label for="address">Full Address</label>
+                        <textarea id="address" required rows="2" placeholder="123 Green Street, Tech City"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="input-group">
+                            <label for="category">E-Waste Category</label>
+                            <select id="category" required>
+                                <option value="Mobile">Mobile Phones</option>
+                                <option value="Laptop">Laptops</option>
+                                <option value="Accessories">Accessories</option>
+                                <option value="Large Appliances">Large Appliances</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="quantity">Quantity</label>
+                            <input type="number" id="quantity" required min="1" value="1">
+                        </div>
+                    </div>
+                    <button type="submit" id="submit-btn" class="btn-primary">Request Pickup</button>
+                    <p id="error-message" class="error hidden">Someting went wrong. Please try again.</p>
+                </form>
+            </div>
+            <!-- Success Section (Hidden by default shown by JS later) -->
+            <div id="success-section" class="hidden">
+                <div class="success-icon">🎉</div>
+                <h2> Pickup Scheduled!</h2>
+                <p> Your request (ID: <span id="req-id"></span>) is pending. </p>
+                <div class="reward-box">
+                    <span class="reward-text">Estimated Reward</span>
+                    <span class="reward-points" id="reward-points">0</span>
+                    <span class="pts">pts</span>
+                </div>
+                <p class="small-text">Our team will contact you shortly to confirm the pickup time</p>
+                <button id="reset-btn" class="btn-secondary">Schedule Another</button>
+            </div>
+        </main>
+    </div>
+    <!-- We will create this JS file in the next step-->
+    <script src="app.js"></script>
+</body>
+
+</html>
