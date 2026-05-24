@@ -7,7 +7,7 @@ const submitBtn = document.getElementById('submit-btn');
 const resetBtn = document.getElementById('reset-btn');
 
 // The URL of our Python FastAPI server
-const API_URL = 'http://127.0.0.1:8000/api/requests';
+const API_URL = 'https://e-waste-pickup-platform-j428.onrender.com/api/requests';
 
 // 2. Listen for the moment the user clicks "Request Pickup"
 form.addEventListener('submit', async function (event) {
