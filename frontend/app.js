@@ -1,3 +1,52 @@
+// ─── Pre-fill from saved login ────────────────────────────────────────────────
+// Returns a YYYY-MM-DD string in the user's local timezone
+function localDateStr(date) {
+    const d = date || new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Default and minimum date = tomorrow (real pickups need at least 1 day lead time)
+    const dateInput = document.getElementById('preferred-date');
+    if (dateInput) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = localDateStr(tomorrow);
+        dateInput.min   = tomorrowStr;
+        dateInput.value = tomorrowStr;
+    }
+
+    // Live phone sanitizer — strip any non-digit character as the user types
+    const phoneEl = document.getElementById('phone');
+    if (phoneEl) {
+        phoneEl.addEventListener('input', () => {
+            const cleaned = phoneEl.value.replace(/\D/g, '');
+            if (phoneEl.value !== cleaned) phoneEl.value = cleaned;
+        });
+    }
+
+    // Pre-fill and show context when user is logged in
+    const user = typeof getUser === 'function' ? getUser() : null;
+    if (user) {
+        const nameEl2  = document.getElementById('fullName');
+        const phoneEl2 = document.getElementById('phone');
+        // Strip non-digits from stored phone in case it was saved with formatting
+        if (nameEl2  && !nameEl2.value)  nameEl2.value  = user.full_name;
+        if (phoneEl2 && !phoneEl2.value) phoneEl2.value = (user.phone_number || '').replace(/\D/g, '');
+
+        // Show the "scheduling as" context strip
+        const strip     = document.getElementById('schedule-as-strip');
+        const stripName = document.getElementById('schedule-as-name');
+        if (strip && stripName) {
+            stripName.textContent = user.full_name || user.phone_number;
+            strip.classList.remove('hidden');
+        }
+    }
+});
+
 // 1. Get references to our HTML elements so we can control them
 const form = document.getElementById('pickup-form');
 const formSection = document.getElementById('form-section');
@@ -6,8 +55,8 @@ const errorMessage = document.getElementById('error-message');
 const submitBtn = document.getElementById('submit-btn');
 const resetBtn = document.getElementById('reset-btn');
 
-// The URL of our Python FastAPI server
-const API_URL = 'https://e-waste-pickup-platform-j428.onrender.com/api/requests';
+// API_BASE is defined globally in auth.js (loaded before this script).
+const API_URL = `${API_BASE}/api/requests`;
 
 // 2. Listen for the moment the user clicks "Request Pickup"
 form.addEventListener('submit', async function (event) {
@@ -17,18 +66,50 @@ form.addEventListener('submit', async function (event) {
 
     // Hide old errors
     errorMessage.classList.add('hidden');
+    const dateErrorEl  = document.getElementById('date-error');
+    const phoneErrorEl = document.getElementById('phone-error');
+    if (dateErrorEl)  dateErrorEl.classList.add('hidden');
+    if (phoneErrorEl) phoneErrorEl.classList.add('hidden');
+
+    // Validate phone: must be exactly 10 digits
+    const rawPhone = document.getElementById('phone').value.replace(/\D/g, '');
+    if (rawPhone.length < 10) {
+        if (phoneErrorEl) {
+            phoneErrorEl.textContent = 'Please enter a valid 10-digit phone number.';
+            phoneErrorEl.classList.remove('hidden');
+        }
+        document.getElementById('phone').focus();
+        return;
+    }
+
+    // Validate preferred date: must be at least tomorrow
+    const prefDateVal = document.getElementById('preferred-date')?.value;
+    if (prefDateVal) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = localDateStr(tomorrow);
+        if (prefDateVal < tomorrowStr) {
+            if (dateErrorEl) {
+                dateErrorEl.textContent = 'Pickup must be scheduled at least 1 day in advance.';
+                dateErrorEl.classList.remove('hidden');
+            }
+            return;
+        }
+    }
 
     // Loading state
     submitBtn.textContent = 'Scheduling...';
     submitBtn.disabled = true;
 
-    // 3. Collect form data
+    // 3. Collect form data — phone is always sent as clean digits regardless of autofill formatting
     const requestData = {
-        full_name: document.getElementById('fullName').value,
-        phone_number: document.getElementById('phone').value,
+        full_name: document.getElementById('fullName').value.trim(),
+        phone_number: rawPhone,
         address: document.getElementById('address').value,
         category: document.getElementById('category').value,
-        estimated_quantity: parseInt(document.getElementById('quantity').value)
+        estimated_quantity: parseInt(document.getElementById('quantity').value),
+        preferred_date: prefDateVal || null,
+        time_slot: document.getElementById('time-slot')?.value || null,
     };
 
     try {
@@ -65,6 +146,12 @@ form.addEventListener('submit', async function (event) {
         // 5. Success response
         const responseData = await response.json();
 
+        // Clear any stale admin status override for this ID.
+        // If the database was reset, a new request can receive the same ID as a
+        // previously cancelled one. Without this, the old localStorage entry
+        // would make the brand-new "Pending" request appear as "Cancelled".
+        localStorage.removeItem(`eco_admin_status_${responseData.id}`);
+
         // Hide form
         formSection.classList.add('hidden');
 
@@ -73,9 +160,18 @@ form.addEventListener('submit', async function (event) {
 
         // Update success details
         document.getElementById('req-id').textContent = responseData.id;
+        document.getElementById('reward-points').textContent = responseData.estimated_points;
 
-        document.getElementById('reward-points').textContent =
-            responseData.estimated_points;
+        // Persist booking + customer details locally so admin modal can display them
+        const prefDate = document.getElementById('preferred-date')?.value;
+        const timeSlot = document.getElementById('time-slot')?.value;
+        localStorage.setItem(`eco_booking_${responseData.id}`, JSON.stringify({
+            preferred_date:     prefDate                        || null,
+            time_slot:          timeSlot                        || null,
+            full_name:          requestData.full_name           || null,
+            phone_number:       requestData.phone_number        || null,
+            estimated_quantity: requestData.estimated_quantity  || null,
+        }));
 
     } catch (error) {
 
@@ -115,6 +211,25 @@ resetBtn.addEventListener('click', function () {
 
     // Show form again
     formSection.classList.remove('hidden');
+
+    // Re-set date minimum/default to tomorrow after reset clears it
+    const dateInput = document.getElementById('preferred-date');
+    if (dateInput) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = localDateStr(tomorrow);
+        dateInput.min   = tomorrowStr;
+        dateInput.value = tomorrowStr;
+    }
+
+    // Re-fill name/phone from session after reset clears them
+    const user = typeof getUser === 'function' ? getUser() : null;
+    if (user) {
+        const nameEl  = document.getElementById('fullName');
+        const phoneEl = document.getElementById('phone');
+        if (nameEl)  nameEl.value  = user.full_name;
+        if (phoneEl) phoneEl.value = (user.phone_number || '').replace(/\D/g, '');
+    }
 });
 
 // --- NEW HELPER FUNCTION ---

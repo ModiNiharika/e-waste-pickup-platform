@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -23,6 +24,7 @@ class PickupRequest(Base):
     estimated_quantity = Column(Integer, default=1)
     estimated_points = Column(Integer, default=0)
     status = Column(String, default="Pending") # Can be Pending, Completed, Cancelled
+    submitted_at = Column(DateTime, server_default=func.now(), nullable=True)
 
     # This creates a link back to the user who made the request
     owner = relationship("User", back_populates="requests")

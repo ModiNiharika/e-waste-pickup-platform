@@ -66,7 +66,7 @@ The E-Waste Collection & Reward Platform is a web-based service designed to make
 - Dynamic pricing/bidding by multiple recyclers.
 - Complex user authentication and historical dashboards for users.
 - Same-day pickup guarantees.
-
+- In the current MVP, recycler assignment is handled manually by the Admin instead of an automated verified recycler network. The recycler-based system will be implemented in Phase 2.
 ---
 
 ## 5. Core Features & Requirements

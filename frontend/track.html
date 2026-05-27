@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Collect | My Requests</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* --- Tracking page overrides --- */
+        body {
+            align-items: flex-start;
+            padding-top: 40px;
+        }
+
+        .container {
+            max-width: 620px;
+        }
+
+        /* Back nav */
+        .nav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-bottom: 24px;
+            transition: color 0.2s ease;
+        }
+
+        .nav-back:hover {
+            color: var(--primary-color);
+        }
+
+        /* Search row inside the glass card */
+        .search-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-row input {
+            flex: 1;
+            margin: 0;
+        }
+
+        .search-row .btn-search {
+            width: auto;
+            padding: 12px 22px;
+            margin: 0;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .search-row .btn-search:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .search-row .btn-search:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Results area */
+        #results-section {
+            margin-top: 20px;
+        }
+
+        /* --- Shared state box --- */
+        .state-box {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-muted);
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .state-icon {
+            font-size: 3rem;
+            margin-bottom: 14px;
+        }
+
+        .state-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 38px;
+            height: 38px;
+            border: 3px solid var(--glass-border);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 0.75s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- Stats bar --- */
+        .stats-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            animation: fadeInUp 0.4s ease-out;
+        }
+
+        .stat-card {
+            flex: 1;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            padding: 16px 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            line-height: 1.1;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+        }
+
+        /* --- Request cards --- */
+        .request-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 14px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            animation: slideIn 0.35s ease-out both;
+        }
+
+        .request-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card top row */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .card-category {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 1.05rem;
+            font-weight: 600;
+        }
+
+        .category-icon {
+            font-size: 1.35rem;
+        }
+
+        /* Status badges */
+        .status-badge {
+            padding: 4px 13px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.12);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-completed {
+            background: rgba(16, 185, 129, 0.12);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-cancelled {
+            background: rgba(100, 116, 139, 0.12);
+            color: #94a3b8;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+        }
+
+        .badge-accepted {
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, 0.25);
+        }
+
+        .badge-scheduled {
+            background: rgba(139, 92, 246, 0.12);
+            color: #a78bfa;
+            border: 1px solid rgba(139, 92, 246, 0.25);
+        }
+
+        /* Card detail rows */
+        .card-detail {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 7px;
+            line-height: 1.4;
+        }
+
+        .detail-icon {
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* Card bottom divider row */
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .request-id {
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .pts-display {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .pts-earned   { color: #10b981; }
+        .pts-estimate { color: var(--text-muted); }
+        .pts-none     { color: #64748b; }
+
+        /* --- Mode toggle --- */
+        .mode-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 9px 12px;
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            color: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .mode-btn:hover:not(.active) {
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--text-main);
+        }
+
+        /* --- Filter tabs --- */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            animation: fadeInUp 0.35s ease-out;
+        }
+
+        .filter-btn {
+            padding: 7px 16px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            color: var(--text-muted);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .filter-btn:hover:not(.active) {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        /* --- Status timeline --- */
+        .timeline {
+            display: flex;
+            align-items: flex-start;
+            margin: 14px 0 4px;
+        }
+
+        .tl-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .tl-dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tl-step.done .tl-dot {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .tl-step.current .tl-dot {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+
+        .tl-label {
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+            text-align: center;
+            line-height: 1.2;
+            max-width: 52px;
+        }
+
+        .tl-step.done .tl-label,
+        .tl-step.current .tl-label {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tl-line {
+            flex: 1;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            margin-top: 4.5px;
+            min-width: 8px;
+        }
+
+        .tl-line.done {
+            background: var(--primary-color);
+        }
+
+        .tl-cancelled {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            color: #94a3b8;
+            font-size: 0.78rem;
+            margin-top: 12px;
+            padding: 5px 12px;
+            background: rgba(100, 116, 139, 0.08);
+            border: 1px solid rgba(100, 116, 139, 0.2);
+            border-radius: 20px;
+        }
+
+        /* --- Logged-in info strip --- */
+        .logged-in-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(16, 185, 129, 0.06);
+            border: 1px solid rgba(16, 185, 129, 0.18);
+            border-radius: 10px;
+            padding: 9px 14px;
+            margin-bottom: 14px;
+            font-size: 0.84rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .logged-in-strip strong {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        .strip-switch-btn {
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 0.82rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            padding: 0;
+            width: auto;
+            margin: 0;
+            text-decoration: underline;
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .strip-switch-btn:hover { opacity: 0.75; }
+
+        /* --- Cancel button --- */
+        .cancel-req-btn {
+            background: none;
+            border: 1px solid rgba(239,68,68,0.45);
+            color: #f87171;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            padding: 5px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.18s ease, color 0.18s ease;
+            white-space: nowrap;
+        }
+        .cancel-req-btn:hover {
+            background: rgba(239,68,68,0.12);
+            color: #fca5a5;
+        }
+
+        /* --- Cancel modal overlay --- */
+        .cancel-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.62);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 900;
+            padding: 16px;
+        }
+        .cancel-overlay.hidden { display: none; }
+
+        .cancel-modal {
+            background: #1a2235;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 18px;
+            padding: 32px 28px 24px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+        }
+        .cancel-modal-icon {
+            font-size: 2.2rem;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+        .cancel-modal h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #f1f5f9;
+            text-align: center;
+            margin: 0 0 8px;
+        }
+        .cancel-modal p {
+            font-size: 0.88rem;
+            color: #94a3b8;
+            text-align: center;
+            margin: 0 0 20px;
+        }
+        .cancel-modal textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 10px;
+            color: #f1f5f9;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.88rem;
+            padding: 12px 14px;
+            resize: vertical;
+            min-height: 80px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .cancel-modal textarea:focus { border-color: rgba(239,68,68,0.5); }
+        .cancel-modal textarea::placeholder { color: #64748b; }
+        .cancel-modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .cancel-modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.18s ease;
+        }
+        .cancel-modal-actions button:hover { opacity: 0.85; }
+        .btn-cancel-keep {
+            background: rgba(255,255,255,0.07);
+            color: #cbd5e1;
+        }
+        .btn-cancel-confirm {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #fff;
+        }
+
+        /* --- Mobile --- */
+        @media (max-width: 480px) {
+            body { padding-top: 24px; }
+
+            .search-row { flex-direction: column; }
+            .search-row .btn-search { width: 100%; padding: 13px; }
+
+            .stats-bar { gap: 8px; }
+            .stat-number { font-size: 1.45rem; }
+            .stat-label  { font-size: 0.7rem; }
+
+            .card-header { flex-wrap: wrap; gap: 8px; }
+
+            .filter-tabs { gap: 6px; }
+            .filter-btn  { padding: 6px 12px; font-size: 0.75rem; }
+            .tl-label    { font-size: 0.55rem; max-width: 44px; }
+
+            .cancel-modal { padding: 24px 18px 20px; }
+            .cancel-modal-actions { flex-direction: column; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <!-- Back navigation -->
+        <a href="home.html" class="nav-back">&#8592; Home</a>
+
+        <!-- Hero -->
+        <header class="hero">
+            <h1>My <span class="highlight">Pickups</span></h1>
+            <p id="hero-subtitle">Search by phone number or look up a specific request ID.</p>
+        </header>
+
+        <!-- Search card -->
+        <div class="card glass">
+            <h2>Track Your Requests</h2>
+
+            <!-- Mode toggle -->
+            <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="phone">&#128222; By Phone</button>
+                <button class="mode-btn" data-mode="id">&#128269; By Request ID</button>
+            </div>
+
+            <!-- Logged-in auto-load strip (hidden until JS checks session) -->
+            <div id="logged-in-strip" class="logged-in-strip hidden">
+                <span>&#128100; Viewing: <strong id="strip-phone"></strong></span>
+                <button class="strip-switch-btn" id="strip-switch-btn">Search a different number</button>
+            </div>
+
+            <div class="search-row">
+                <input
+                    type="tel"
+                    id="phone-input"
+                    placeholder="e.g. 9876543210"
+                    maxlength="15"
+                    autocomplete="tel"
+                >
+                <button class="btn-search" id="search-btn">Search</button>
+            </div>
+            <p id="search-error" class="error hidden"></p>
+        </div>
+
+        <!-- Results area — hidden until search is run -->
+        <div id="results-section" class="hidden">
+
+            <!-- State: Loading (skeleton cards injected by JS) -->
+            <div id="state-loading" class="hidden"></div>
+
+            <!-- State: Not found -->
+            <div id="state-empty" class="state-box hidden">
+                <div class="empty-illustration">&#128237;</div>
+                <p class="state-title">No Requests Found</p>
+                <p>We couldn&rsquo;t find any pickups matching your search.<br>Double-check the details or schedule your first pickup.</p>
+                <a href="index.html" class="empty-cta">&#128666; Schedule a Pickup</a>
+            </div>
+
+            <!-- State: Server error -->
+            <div id="state-error" class="state-box hidden">
+                <div class="empty-illustration">&#9888;&#65039;</div>
+                <p class="state-title">Something Went Wrong</p>
+                <p id="error-detail">Could not connect to the server. Please try again later.</p>
+                <button class="retry-btn" id="retry-btn">&#8635; Try Again</button>
+            </div>
+
+            <!-- State: Results -->
+            <div id="state-results" class="hidden">
+
+                <!-- Filter tabs (shown only for phone-based multi-result searches) -->
+                <div id="filter-tabs" class="filter-tabs hidden">
+                    <button class="filter-btn active" data-filter="All">All</button>
+                    <button class="filter-btn" data-filter="Pending">Pending</button>
+                    <button class="filter-btn" data-filter="Accepted">Accepted</button>
+                    <button class="filter-btn" data-filter="Pickup Scheduled">Scheduled</button>
+                    <button class="filter-btn" data-filter="Completed">Completed</button>
+                    <button class="filter-btn" data-filter="Cancelled">Cancelled</button>
+                </div>
+
+                <!-- Stats summary bar -->
+                <div class="stats-bar">
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-total">0</div>
+                        <div class="stat-label">Requests</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-active">0</div>
+                        <div class="stat-label">Active</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-points">0</div>
+                        <div class="stat-label">Pts Earned</div>
+                    </div>
+                </div>
+
+                <!-- Request cards injected here by track.js -->
+                <div id="cards-list"></div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Cancel Request Modal ── -->
+    <div id="cancel-overlay" class="cancel-overlay hidden">
+        <div class="cancel-modal">
+            <div class="cancel-modal-icon">&#9888;&#65039;</div>
+            <h3>Cancel this request?</h3>
+            <p>This action cannot be undone. Your request will be marked as cancelled.</p>
+            <textarea id="cancel-reason" placeholder="Reason (optional) — e.g. No longer needed" maxlength="200"></textarea>
+            <div class="cancel-modal-actions">
+                <button class="btn-cancel-keep" id="cancel-keep-btn">Keep Request</button>
+                <button class="btn-cancel-confirm" id="cancel-confirm-btn">Yes, Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Recycling Certificate Modal ── -->
+    <div id="cert-overlay" class="cert-overlay hidden">
+        <div class="cert-modal">
+            <div class="cert-paper">
+                <div class="cert-badge-ring">&#9851;&#65039;</div>
+                <p class="cert-eyebrow">Certificate of Recycling</p>
+                <h2 class="cert-heading">Eco&#8209;Collect</h2>
+                <p class="cert-sub">Sustainable Disposal &bull; Verified Pickup</p>
+
+                <div class="cert-divider"></div>
+
+                <p class="cert-certifies">This certifies that</p>
+                <p class="cert-name" id="cert-name">—</p>
+                <p class="cert-desc" id="cert-desc">has responsibly recycled electronics through our verified pickup program.</p>
+
+                <div class="cert-stats-row">
+                    <div class="cert-stat">
+                        <div class="cert-stat-number" id="cert-devices">0</div>
+                        <div class="cert-stat-label">Devices</div>
+                    </div>
+                    <div class="cert-stat">
+                        <div class="cert-stat-number" id="cert-points">0</div>
+                        <div class="cert-stat-label">Points Earned</div>
+                    </div>
+                </div>
+
+                <p class="cert-footer-line">Request #<span id="cert-req-id">—</span> &nbsp;&bull;&nbsp; <span id="cert-date">—</span></p>
+            </div>
+
+            <div class="cert-actions">
+                <button class="cert-dl-btn"  id="cert-download-btn">&#11015;&#65039; Download PDF</button>
+                <button class="cert-cls-btn" id="cert-close-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>injectNavbar('track');</script>
+    <script src="track.js"></script>
+</body>
+
+</html>

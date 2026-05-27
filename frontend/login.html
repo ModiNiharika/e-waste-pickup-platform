@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco-Collect | Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="login-wrap">
+
+        <!-- Brand -->
+        <div class="login-logo">
+            <span class="login-logo-icon">&#9851;&#65039;</span>
+            <h1>Eco&#8209;Collect</h1>
+            <p>Sign in to track your pickups &amp; manage rewards</p>
+        </div>
+
+        <!-- Card -->
+        <div class="card glass">
+
+            <!-- Mode toggle -->
+            <div class="login-toggle">
+                <button class="login-tab active" id="tab-login">Login</button>
+                <button class="login-tab" id="tab-signup">Sign Up</button>
+            </div>
+
+            <!-- ── Login form ── -->
+            <div id="login-form">
+                <div class="input-group">
+                    <label for="login-phone">Phone Number</label>
+                    <input type="tel" id="login-phone" placeholder="e.g. 9876543210" maxlength="10" inputmode="numeric" autocomplete="tel">
+                </div>
+                <button class="btn-primary" id="login-btn">Continue &#8594;</button>
+                <p id="login-error" class="error hidden"></p>
+                <p class="login-note">No account yet? <a href="#" id="switch-to-signup">Sign up instead.</a></p>
+            </div>
+
+            <!-- ── Signup form ── -->
+            <div id="signup-form" class="hidden">
+                <div class="input-group">
+                    <label for="signup-name">Full Name</label>
+                    <input type="text" id="signup-name" placeholder="e.g. Niharika Modi" autocomplete="name">
+                </div>
+                <div class="input-group">
+                    <label for="signup-phone">Phone Number</label>
+                    <input type="tel" id="signup-phone" placeholder="e.g. 9876543210" maxlength="10" inputmode="numeric" autocomplete="tel">
+                </div>
+                <button class="btn-primary" id="signup-btn">Create Account &#8594;</button>
+                <p id="signup-error" class="error hidden"></p>
+                <p class="login-note">Already have an account? <a href="#" id="switch-to-login">Login instead.</a></p>
+            </div>
+
+        </div>
+
+    </div>
+
+    <script>
+        // ─── Shared helpers ───────────────────────────────────────────────────
+        const AUTH_KEY  = 'eco_user';
+        const API_BASE  = 'http://127.0.0.1:8000';
+
+        // Strip non-digits live so users can't type letters into phone fields
+        document.addEventListener('DOMContentLoaded', () => {
+            ['login-phone', 'signup-phone'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', () => {
+                    const clean = el.value.replace(/\D/g, '');
+                    if (el.value !== clean) el.value = clean;
+                });
+            });
+        });
+
+        const params   = new URLSearchParams(location.search);
+        const returnTo = params.get('returnTo') || 'home.html';
+
+        // Redirect if already logged in
+        try {
+            if (JSON.parse(localStorage.getItem(AUTH_KEY))) {
+                location.replace(returnTo);
+            }
+        } catch (_) {}
+
+        function storeUser(user) {
+            localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+        }
+
+        function showErr(el, msg) {
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        function hideErr(el) {
+            el.classList.add('hidden');
+        }
+
+        // ─── Tab switching ────────────────────────────────────────────────────
+        const tabLogin  = document.getElementById('tab-login');
+        const tabSignup = document.getElementById('tab-signup');
+        const loginForm  = document.getElementById('login-form');
+        const signupForm = document.getElementById('signup-form');
+
+        function switchTab(mode) {
+            if (mode === 'login') {
+                tabLogin.classList.add('active');
+                tabSignup.classList.remove('active');
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                document.getElementById('login-phone').focus();
+            } else {
+                tabSignup.classList.add('active');
+                tabLogin.classList.remove('active');
+                signupForm.classList.remove('hidden');
+                loginForm.classList.add('hidden');
+                document.getElementById('signup-name').focus();
+            }
+        }
+
+        tabLogin.addEventListener('click',  () => switchTab('login'));
+        tabSignup.addEventListener('click', () => switchTab('signup'));
+        document.getElementById('switch-to-signup').addEventListener('click', e => { e.preventDefault(); switchTab('signup'); });
+        document.getElementById('switch-to-login').addEventListener('click',  e => { e.preventDefault(); switchTab('login');  });
+
+        // ─── Login ────────────────────────────────────────────────────────────
+        const loginBtn   = document.getElementById('login-btn');
+        const loginPhone = document.getElementById('login-phone');
+        const loginError = document.getElementById('login-error');
+
+        loginBtn.addEventListener('click', handleLogin);
+        loginPhone.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+
+        async function handleLogin() {
+            hideErr(loginError);
+            const phone  = loginPhone.value.trim();
+            const digits = phone.replace(/\D/g, '');
+
+            if (digits.length < 10) {
+                showErr(loginError, 'Please enter a valid phone number (at least 10 digits).');
+                loginPhone.focus();
+                return;
+            }
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Checking…';
+
+            try {
+                const res = await fetch(`${API_BASE}/api/requests/track?phone=${encodeURIComponent(phone)}`);
+
+                if (res.status === 404) {
+                    // Pre-fill signup form and switch
+                    document.getElementById('signup-phone').value = phone;
+                    switchTab('signup');
+                    showErr(document.getElementById('signup-error'),
+                        'No account found for this number. Please sign up to continue.');
+                    return;
+                }
+
+                if (!res.ok) throw new Error(`Server error ${res.status}.`);
+
+                const data = await res.json();
+                const name = data.user ? data.user.full_name : (data[0] ? data[0].full_name : 'User');
+                storeUser({ full_name: name, phone_number: digits });
+                location.replace(returnTo);
+
+            } catch (err) {
+                const msg = err.message === 'Failed to fetch'
+                    ? 'Cannot connect to server. Please check your connection.'
+                    : err.message;
+                showErr(loginError, msg);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Continue →';
+            }
+        }
+
+        // ─── Sign Up ──────────────────────────────────────────────────────────
+        const signupBtn   = document.getElementById('signup-btn');
+        const signupName  = document.getElementById('signup-name');
+        const signupPhone = document.getElementById('signup-phone');
+        const signupError = document.getElementById('signup-error');
+
+        signupBtn.addEventListener('click', handleSignup);
+        signupPhone.addEventListener('keydown', e => { if (e.key === 'Enter') handleSignup(); });
+
+        function handleSignup() {
+            hideErr(signupError);
+            const name   = signupName.value.trim();
+            const phone  = signupPhone.value.trim();
+            const digits = phone.replace(/\D/g, '');
+
+            if (!name || name.length < 2) {
+                showErr(signupError, 'Please enter your full name.');
+                signupName.focus();
+                return;
+            }
+            if (digits.length < 10) {
+                showErr(signupError, 'Please enter a valid phone number (at least 10 digits).');
+                signupPhone.focus();
+                return;
+            }
+
+            storeUser({ full_name: name, phone_number: digits });
+            location.replace(returnTo);
+        }
+    </script>
+</body>
+
+</html>
