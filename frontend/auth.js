@@ -30,7 +30,7 @@ function clearUser() {
 
 function requireAuth() {
     if (getUser()) return true;
-    const currentFile = location.pathname.split('/').pop() || 'home.html';
+    const currentFile = location.pathname.split('/').pop() || 'index.html';
     location.replace(`login.html?returnTo=${encodeURIComponent(currentFile)}`);
     return false;
 }
@@ -40,21 +40,21 @@ function requireAuth() {
 
 function injectNavbar(activePage) {
     const user        = getUser();
-    const currentFile = location.pathname.split('/').pop() || 'home.html';
+    const currentFile = location.pathname.split('/').pop() || 'index.html';
     const loginHref   = `login.html?returnTo=${encodeURIComponent(currentFile)}`;
 
     const nav = document.createElement('nav');
     nav.className = 'eco-navbar';
     nav.innerHTML = `
-        <a href="home.html" class="nav-brand">
+        <a href="index.html" class="nav-brand">
             <span>&#9851;&#65039;</span>
             <span>Eco&#8209;Collect</span>
         </a>
         <div class="nav-links">
-            <a href="home.html" class="nav-link${activePage === 'home' ? ' active' : ''}">
+            <a href="index.html" class="nav-link${activePage === 'home' ? ' active' : ''}">
                 ${user ? '&#128202; Dashboard' : '&#127968; Home'}
             </a>
-            <a href="index.html" class="nav-link${activePage === 'schedule' ? ' active' : ''}">&#128666; Schedule Pickup</a>
+            <a href="schedule.html" class="nav-link${activePage === 'schedule' ? ' active' : ''}">&#128666; Schedule Pickup</a>
             <a href="track.html"  class="nav-link${activePage === 'track'    ? ' active' : ''}">&#128230; Track Requests</a>
             <!-- Admin link intentionally removed from user navbar — access via admin-login.html -->
         </div>
@@ -85,7 +85,7 @@ function injectNavbar(activePage) {
     if (user) {
         document.getElementById('eco-nav-logout').addEventListener('click', () => {
             clearUser();
-            window.location.href = 'home.html';
+            window.location.href = 'index.html';
         });
     }
 }
@@ -136,7 +136,7 @@ function injectAdminNavbar() {
             <span class="admin-nav-badge">&#128737;&#65039; Admin Dashboard</span>
         </div>
         <div class="nav-right">
-            <a href="home.html" class="nav-btn nav-link admin-user-site-link">&#8592; User Site</a>
+            <a href="index.html" class="nav-btn nav-link admin-user-site-link">&#8592; User Site</a>
             <button class="nav-btn nav-logout" id="eco-admin-logout">Logout</button>
         </div>
     `;
