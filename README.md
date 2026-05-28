@@ -38,15 +38,23 @@ Built as a solo full-stack project to demonstrate end-to-end product development
 
 ## Screenshots
 
-> *Replace these placeholders with actual screenshots before sharing.*
+## Screenshots
 
-| Home / Dashboard | Schedule Pickup |
-|---|---|
-| `![Dashboard](images/dashboard.png)` | `![Schedule](images/schedule.png)` |
+### Home / Dashboard
 
-| Request Tracking | Admin Dashboard |
-|---|---|
-| `![Track](images/track.png)` | `![Admin](images/admin.png)` |
+![Dashboard](images/dashboard.png)
+
+### Schedule Pickup
+
+![Schedule](images/schedule.png)
+
+### Request Tracking
+
+![Track](images/track.png)
+
+### Admin Dashboard
+
+![Admin](images/admin.png)
 
 ---
 
