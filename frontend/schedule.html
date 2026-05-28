@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Eco-Collect | E-Waste Rewards</title>
+    <!-- Importing a beautiful modern font from Google -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!--Connecting our CSS file-->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<style>
+    .nav-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+        transition: color 0.2s ease;
+    }
+    .nav-back:hover { color: var(--primary-color); }
+
+    /* Logged-in scheduling context strip */
+    .schedule-as-strip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: rgba(16, 185, 129, 0.06);
+        border: 1px solid rgba(16, 185, 129, 0.18);
+        border-radius: 12px;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .schedule-as-strip strong { color: var(--primary-color); }
+
+    .schedule-as-strip a {
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: color 0.2s;
+    }
+
+    .schedule-as-strip a:hover { color: var(--primary-color); }
+
+    .field-hint {
+        font-size: 0.78rem;
+        color: var(--text-muted);
+        margin-top: 5px;
+        opacity: 0.8;
+    }
+</style>
+
+<body>
+    <div class="container">
+        <a href="home.html" class="nav-back">&#8592; Home</a>
+
+        <!--Hero Section -->
+        <header class="hero">
+            <h1>Recycle E-waste. <span class="highlight"> <br>Earn Rewards.</span></h1>
+            <p> Schedule a free doorstep pickup for your old electronics and get rewarded instantly. </p>
+        </header>
+
+        <!-- Main Form Section -->
+        <main class="card glass">
+            <!-- Shows when user is logged in -->
+            <div id="schedule-as-strip" class="schedule-as-strip hidden">
+                &#128100; Scheduling as <strong id="schedule-as-name"></strong>
+                <a href="home.html">&#128202; Dashboard</a>
+            </div>
+
+            <div id="form-section">
+                <h2>Schedule a Pickup</h2>
+                <form id="pickup-form">
+                    <div class="input-group">
+                        <label for="fullName">Full Name</label>
+                        <input type="text" id="fullName" required placeholder="John Doe">
+                    </div>
+                    <div class="input-group">
+                        <label for="phone">Phone Number</label>
+                        <input type="tel" id="phone" required placeholder="10-digit number"
+                               inputmode="numeric" maxlength="10" autocomplete="tel">
+                        <p id="phone-error" class="error hidden"></p>
+                    </div>
+                    <div class="input-group">
+                        <label for="address">Full Address</label>
+                        <textarea id="address" required rows="2" placeholder="123 Green Street, Tech City"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="input-group">
+                            <label for="category">E-Waste Category</label>
+                            <select id="category" required>
+                                <option value="Mobile">Mobile Phones</option>
+                                <option value="Laptop">Laptops</option>
+                                <option value="Accessories">Accessories</option>
+                                <option value="Large Appliances">Large Appliances</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="quantity">Quantity</label>
+                            <input type="number" id="quantity" required min="1" value="1">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-group">
+                            <label for="preferred-date">Preferred Pickup Date</label>
+                            <input type="date" id="preferred-date">
+                            <span class="field-hint">&#128337; We schedule pickups within 1–2 days</span>
+                        </div>
+                        <div class="input-group">
+                            <label for="time-slot">Time Slot</label>
+                            <select id="time-slot">
+                                <option value="Morning">Morning (9 AM – 12 PM)</option>
+                                <option value="Afternoon">Afternoon (12 – 4 PM)</option>
+                                <option value="Evening">Evening (4 – 7 PM)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p id="date-error" class="error hidden"></p>
+                    <button type="submit" id="submit-btn" class="btn-primary">Request Pickup</button>
+                    <p id="error-message" class="error hidden">Someting went wrong. Please try again.</p>
+                </form>
+            </div>
+            <!-- Success Section (Hidden by default shown by JS later) -->
+            <div id="success-section" class="hidden">
+                <div class="success-icon">🎉</div>
+                <h2> Pickup Scheduled!</h2>
+                <p> Your request (ID: <span id="req-id"></span>) is pending. </p>
+                <div class="reward-box">
+                    <span class="reward-text">Estimated Reward</span>
+                    <span class="reward-points" id="reward-points">0</span>
+                    <span class="pts">pts</span>
+                </div>
+                <p class="small-text">Our team will contact you shortly to confirm the pickup time</p>
+                <button id="reset-btn" class="btn-secondary">Schedule Another</button>
+                <a href="track.html" style="display:block; text-align:center; margin-top:12px; color:var(--text-muted); font-size:0.9rem; text-decoration:none;">
+                    Track this request &rarr;
+                </a>
+            </div>
+        </main>
+    </div>
+    <script src="auth.js"></script>
+    <script>injectNavbar('schedule');</script>
+    <script src="app.js"></script>
+</body>
+
+</html>
