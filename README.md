@@ -38,8 +38,6 @@ Built as a solo full-stack project to demonstrate end-to-end product development
 
 ## Screenshots
 
-## Screenshots
-
 ### Home / Dashboard
 
 ![Dashboard](images/dashboard.png)
