@@ -333,7 +333,7 @@ After deploying the backend, update `API_BASE` in `frontend/auth.js` to your Ren
 ## Author
 
 **Niharika Modi**
-[LinkedIn](www.linkedin.com/in/niharika-modi-6a293931b) · [GitHub](https://github.com/ModiNiharika) 
+[LinkedIn](https://www.linkedin.com/in/niharika-modi-6a293931b/) · [GitHub](https://github.com/ModiNiharika) 
 
 ---
 
