@@ -146,12 +146,6 @@ form.addEventListener('submit', async function (event) {
         // 5. Success response
         const responseData = await response.json();
 
-        // Clear any stale admin status override for this ID.
-        // If the database was reset, a new request can receive the same ID as a
-        // previously cancelled one. Without this, the old localStorage entry
-        // would make the brand-new "Pending" request appear as "Cancelled".
-        localStorage.removeItem(`eco_admin_status_${responseData.id}`);
-
         // Hide form
         formSection.classList.add('hidden');
 

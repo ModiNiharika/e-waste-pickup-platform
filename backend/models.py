@@ -24,6 +24,8 @@ class PickupRequest(Base):
     estimated_quantity = Column(Integer, default=1)
     estimated_points = Column(Integer, default=0)
     status = Column(String, default="Pending") # Can be Pending, Completed, Cancelled
+    preferred_date = Column(String, nullable=True)
+    time_slot      = Column(String, nullable=True)
     submitted_at = Column(DateTime, server_default=func.now(), nullable=True)
 
     # This creates a link back to the user who made the request

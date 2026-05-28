@@ -917,12 +917,6 @@
                 ? (Array.isArray(data) ? data : (data.requests || []))
                 : [];
 
-            // Apply admin status overrides so dashboard matches the track page
-            requests = requests.map(req => {
-                const override = localStorage.getItem(`eco_admin_status_${req.id}`);
-                return override ? { ...req, status: override } : req;
-            });
-
             const total     = requests.length;
             const completed = requests.filter(r => r.status === 'Completed').length;
             const points    = requests

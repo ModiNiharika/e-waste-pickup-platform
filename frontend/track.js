@@ -149,20 +149,39 @@ cancelOverlay.addEventListener('click', e => {
     if (e.target === cancelOverlay) closeCancelModal();
 });
 
-cancelConfirmBtn.addEventListener('click', () => {
+cancelConfirmBtn.addEventListener('click', async () => {
     if (pendingCancelId === null) return;
 
     const id     = pendingCancelId;
     const reason = cancelReason.value.trim();
 
-    localStorage.setItem(`eco_admin_status_${id}`, 'Cancelled');
-    if (reason) localStorage.setItem(`eco_cancel_reason_${id}`, reason);
+    cancelConfirmBtn.disabled     = true;
+    cancelConfirmBtn.textContent  = 'Cancelling…';
 
-    allRequests = allRequests.map(r => r.id === id ? { ...r, status: 'Cancelled' } : r);
+    try {
+        const res = await fetch(`${API_BASE}/api/requests/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Cancelled' }),
+        });
+        if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
-    closeCancelModal();
-    updateFilterCounts(allRequests);
-    renderResults(allRequests, sumCompletedPoints(allRequests));
+        if (reason) localStorage.setItem(`eco_cancel_reason_${id}`, reason);
+
+        allRequests = allRequests.map(r => r.id === id ? { ...r, status: 'Cancelled' } : r);
+        closeCancelModal();
+        updateFilterCounts(allRequests);
+        renderResults(allRequests, sumCompletedPoints(allRequests));
+    } catch (err) {
+        const errEl = document.createElement('p');
+        errEl.style.cssText = 'color:#f87171;font-size:0.83rem;margin-top:10px;text-align:center';
+        errEl.textContent = 'Could not cancel — please try again.';
+        cancelConfirmBtn.parentElement.appendChild(errEl);
+        setTimeout(() => errEl.remove(), 3000);
+    } finally {
+        cancelConfirmBtn.disabled    = false;
+        cancelConfirmBtn.textContent = 'Yes, Cancel';
+    }
 });
 
 document.addEventListener('keydown', e => {
@@ -226,8 +245,7 @@ async function fetchByPhone(phone) {
 
         if (requests.length === 0) { showState('empty'); return; }
 
-        // Apply admin status overrides stored locally
-        allRequests = applyStatusOverrides(requests);
+        allRequests = requests;
         totalPoints = sumCompletedPoints(allRequests);
 
         updateFilterCounts(allRequests);
@@ -257,14 +275,10 @@ async function fetchById(id) {
 
         if (!found) { showState('empty'); return; }
 
-        // Apply admin status override if present
-        const override  = localStorage.getItem(`eco_admin_status_${found.id}`);
-        const effective = override ? { ...found, status: override } : found;
-
-        allRequests = [effective];
+        allRequests = [found];
         filterTabs.classList.add('hidden');
-        const pts = effective.status === 'Completed' ? (effective.estimated_points || 0) : 0;
-        renderResults([effective], pts);
+        const pts = found.status === 'Completed' ? (found.estimated_points || 0) : 0;
+        renderResults([found], pts);
         showState('results');
 
     } catch (err) {
@@ -272,15 +286,6 @@ async function fetchById(id) {
     } finally {
         searchBtn.disabled = false;
     }
-}
-
-// ─── Status overrides ─────────────────────────────────────────────────────────
-
-function applyStatusOverrides(requests) {
-    return requests.map(req => {
-        const override = localStorage.getItem(`eco_admin_status_${req.id}`);
-        return override ? { ...req, status: override } : req;
-    });
 }
 
 // ─── Filter ───────────────────────────────────────────────────────────────────
@@ -358,10 +363,12 @@ function buildCard(req, index) {
     const { ptsText, ptsCls } = buildPointsDisplay(req);
 
     const booking  = getLocalBooking(req.id);
-    const slotLine = booking && (booking.preferred_date || booking.time_slot)
+    const prefDate = req.preferred_date || booking.preferred_date || null;
+    const timeSlot = req.time_slot      || booking.time_slot      || null;
+    const slotLine = (prefDate || timeSlot)
         ? `<div class="card-detail">
                <span class="detail-icon">&#128197;</span>
-               <span>${booking.preferred_date ? escHtml(booking.preferred_date) : ''}${booking.preferred_date && booking.time_slot ? ' &bull; ' : ''}${booking.time_slot ? escHtml(booking.time_slot) : ''}</span>
+               <span>${prefDate ? escHtml(prefDate) : ''}${prefDate && timeSlot ? ' &bull; ' : ''}${timeSlot ? escHtml(timeSlot) : ''}</span>
            </div>`
         : '';
 

@@ -1245,9 +1245,9 @@
             });
 
             // ── Confirm dialog events ──
-            document.getElementById('confirm-ok').addEventListener('click', () => {
-                if (pendingConfirmCb) pendingConfirmCb();
+            document.getElementById('confirm-ok').addEventListener('click', async () => {
                 closeConfirm();
+                if (pendingConfirmCb) await pendingConfirmCb();
             });
             document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
 
@@ -1279,12 +1279,6 @@
                 if (!res.ok) throw new Error(`Server returned HTTP ${res.status}.`);
 
                 allRequests = await res.json();
-
-                // Apply any locally-stored status overrides
-                allRequests.forEach(req => {
-                    const override = localStorage.getItem(`eco_admin_status_${req.id}`);
-                    if (override) req.status = override;
-                });
 
                 updateStats();
                 renderList();
@@ -1470,16 +1464,21 @@
             document.getElementById('modal-id-val').textContent = '#' + req.id;
             document.getElementById('modal-address').textContent = req.address || '—';
 
-            // Booking data from localStorage
-            setModalField('modal-quantity', booking.estimated_quantity != null
-                ? booking.estimated_quantity + (booking.estimated_quantity === 1 ? ' item' : ' items')
+            // Quantity always comes from the API response
+            const qty = req.estimated_quantity;
+            setModalField('modal-quantity', qty != null
+                ? qty + (qty === 1 ? ' item' : ' items')
                 : null);
-            setModalField('modal-date', booking.preferred_date ? formatDate(booking.preferred_date) : null);
-            setModalField('modal-time', booking.time_slot || null);
 
-            // Customer info from localStorage
-            setModalField('modal-name',  booking.full_name    || null);
-            setModalField('modal-phone', booking.phone_number || null);
+            // Date/time: API first, localStorage fallback for pre-migration requests
+            const prefDate = req.preferred_date || booking.preferred_date || null;
+            const timeSlot = req.time_slot      || booking.time_slot      || null;
+            setModalField('modal-date', prefDate ? formatDate(prefDate) : null);
+            setModalField('modal-time', timeSlot || null);
+
+            // Customer info: API first (joined from users table), localStorage fallback
+            setModalField('modal-name',  req.full_name    || booking.full_name    || null);
+            setModalField('modal-phone', req.phone_number || booking.phone_number || null);
 
             // Action button states
             syncModalButtons(req.status);
@@ -1543,9 +1542,18 @@
         }
 
         // ─── Status change ─────────────────────────────────────────────────────
-        function commitStatus(reqId, newStatus) {
-            // Persist override locally (admin-side state, backend read-only)
-            localStorage.setItem(`eco_admin_status_${reqId}`, newStatus);
+        async function commitStatus(reqId, newStatus) {
+            try {
+                const res = await fetch(`${API_BASE}/api/requests/${reqId}/status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus }),
+                });
+                if (!res.ok) throw new Error(`Server returned ${res.status}`);
+            } catch (err) {
+                showToast(`Failed to update status: ${err.message}`, 'error');
+                return;
+            }
 
             // Update in-memory list
             const req = allRequests.find(r => r.id === reqId);

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
 
 import models
@@ -7,6 +8,19 @@ import schemas
 from database import engine, SessionLocal
 
 models.Base.metadata.create_all(bind=engine)
+
+# Add columns introduced after initial deploy — safe to run on every startup.
+# SQLite raises OperationalError if the column already exists; we catch and ignore it.
+with engine.connect() as _conn:
+    for _col in [
+        "ALTER TABLE pickup_requests ADD COLUMN preferred_date TEXT",
+        "ALTER TABLE pickup_requests ADD COLUMN time_slot TEXT",
+    ]:
+        try:
+            _conn.execute(text(_col))
+            _conn.commit()
+        except Exception:
+            pass  # column already present
 
 app = FastAPI(title="E-Waste Platform API")
 
@@ -33,12 +47,9 @@ REWARD_POINTS = {
 }
 
 def normalize_phone(raw: str) -> str:
-    """Strip formatting and country-code prefix, return bare 10-digit number."""
     phone = raw.strip().lstrip("+")
-    # Drop +91 / 91 country code prefix
     if len(phone) > 10 and phone.startswith("91"):
         phone = phone[2:]
-    # Drop leading STD 0 (e.g. 09876543210)
     if len(phone) == 11 and phone.startswith("0"):
         phone = phone[1:]
     return phone
@@ -63,13 +74,12 @@ def create_pickup_request(
         db.commit()
         db.refresh(user)
     else:
-        # Keep the stored name up-to-date if the user re-submits with a new name
         if request_data.full_name.strip() and user.full_name != request_data.full_name.strip():
             user.full_name = request_data.full_name.strip()
             db.commit()
 
-    points_per_item  = REWARD_POINTS.get(request_data.category, 0)
-    total_estimated  = points_per_item * request_data.estimated_quantity
+    points_per_item = REWARD_POINTS.get(request_data.category, 0)
+    total_estimated = points_per_item * request_data.estimated_quantity
 
     new_request = models.PickupRequest(
         user_id=user.id,
@@ -77,7 +87,9 @@ def create_pickup_request(
         category=request_data.category,
         estimated_quantity=request_data.estimated_quantity,
         estimated_points=total_estimated,
-        status="Pending",  # explicit — never rely on column default for safety
+        preferred_date=request_data.preferred_date,
+        time_slot=request_data.time_slot,
+        status="Pending",
     )
     db.add(new_request)
     db.commit()
@@ -104,7 +116,6 @@ def track_requests(
             detail=f"No account found for phone number '{normalized}'.",
         )
 
-    # Return requests newest first
     requests = (
         db.query(models.PickupRequest)
         .filter(models.PickupRequest.user_id == user.id)
@@ -114,10 +125,41 @@ def track_requests(
     return {"user": user, "requests": requests}
 
 
-@app.get("/admin/requests", response_model=list[schemas.PickupRequestResponse])
+@app.patch("/api/requests/{req_id}/status")
+def update_request_status(
+    req_id: int,
+    update: schemas.StatusUpdate,
+    db: Session = Depends(get_db),
+):
+    req = db.query(models.PickupRequest).filter(models.PickupRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail=f"Request #{req_id} not found.")
+    req.status = update.status
+    db.commit()
+    return {"id": req.id, "status": req.status}
+
+
+@app.get("/admin/requests", response_model=list[schemas.AdminPickupRequestResponse])
 def get_all_requests(db: Session = Depends(get_db)):
-    return (
+    requests = (
         db.query(models.PickupRequest)
+        .options(joinedload(models.PickupRequest.owner))
         .order_by(models.PickupRequest.id.desc())
         .all()
     )
+    return [
+        schemas.AdminPickupRequestResponse(
+            id=req.id,
+            address=req.address,
+            category=req.category,
+            estimated_quantity=req.estimated_quantity,
+            estimated_points=req.estimated_points,
+            status=req.status,
+            preferred_date=req.preferred_date,
+            time_slot=req.time_slot,
+            submitted_at=req.submitted_at,
+            full_name=req.owner.full_name if req.owner else None,
+            phone_number=req.owner.phone_number if req.owner else None,
+        )
+        for req in requests
+    ]
