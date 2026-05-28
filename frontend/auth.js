@@ -7,7 +7,7 @@ const AUTH_STORAGE_KEY = 'eco_user';
 
 // ─── Single source of truth for the API base URL ──────────────────────────────
 // All pages load auth.js first, so API_BASE is available everywhere.
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = 'https://e-waste-pickup-platform-j428.onrender.com';
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
