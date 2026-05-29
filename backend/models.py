@@ -18,12 +18,12 @@ class PickupRequest(Base):
     __tablename__ = "pickup_requests"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
     address = Column(String)
     category = Column(String) # e.g., Mobile, Laptop, Accessories
     estimated_quantity = Column(Integer, default=1)
     estimated_points = Column(Integer, default=0)
-    status = Column(String, default="Pending") # Can be Pending, Completed, Cancelled
+    status = Column(String, default="Pending", index=True)
     preferred_date = Column(String, nullable=True)
     time_slot      = Column(String, nullable=True)
     submitted_at = Column(DateTime, server_default=func.now(), nullable=True)

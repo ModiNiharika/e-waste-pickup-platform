@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+import os
+from fastapi import FastAPI, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import text
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,18 +10,20 @@ from database import engine, SessionLocal
 
 models.Base.metadata.create_all(bind=engine)
 
-# Add columns introduced after initial deploy — safe to run on every startup.
-# SQLite raises OperationalError if the column already exists; we catch and ignore it.
+# Startup migrations — add columns and indexes introduced after initial deploy.
+# try/except swallows "already exists" errors so every restart is safe.
 with engine.connect() as _conn:
-    for _col in [
+    for _stmt in [
         "ALTER TABLE pickup_requests ADD COLUMN preferred_date TEXT",
         "ALTER TABLE pickup_requests ADD COLUMN time_slot TEXT",
+        "CREATE INDEX IF NOT EXISTS idx_pr_user_id ON pickup_requests (user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_pr_status  ON pickup_requests (status)",
     ]:
         try:
-            _conn.execute(text(_col))
+            _conn.execute(text(_stmt))
             _conn.commit()
         except Exception:
-            pass  # column already present
+            pass
 
 app = FastAPI(title="E-Waste Platform API")
 
@@ -31,6 +34,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ─── Admin authentication ─────────────────────────────────────────────────────
+# Set ADMIN_TOKEN as an environment variable on Render.
+# Falls back to the demo code so the app works out-of-the-box locally.
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "ECO-ADMIN-2024")
+
+def verify_admin_token(x_admin_token: str = Header(None)):
+    """FastAPI dependency — rejects requests without a valid X-Admin-Token header."""
+    if not x_admin_token or x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized. Valid X-Admin-Token header required.",
+        )
+
+# ─── DB session ───────────────────────────────────────────────────────────────
 
 def get_db():
     db = SessionLocal()
@@ -55,7 +73,12 @@ def normalize_phone(raw: str) -> str:
     return phone
 
 
-# --- API ENDPOINTS ---
+# ─── PUBLIC ENDPOINTS ─────────────────────────────────────────────────────────
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/api/requests", response_model=schemas.PickupRequestResponse)
 def create_pickup_request(
@@ -122,10 +145,53 @@ def track_requests(
         .order_by(models.PickupRequest.id.desc())
         .all()
     )
-    return {"user": user, "requests": requests}
+
+    # Compute total_points dynamically — the User.total_points column is never
+    # updated by any write operation, so reading it would always return 0.
+    total_points = sum(
+        r.estimated_points for r in requests if r.status == "Completed"
+    )
+
+    return schemas.TrackingResponse(
+        user=schemas.TrackingUser(
+            full_name=user.full_name,
+            total_points=total_points,
+        ),
+        requests=requests,
+    )
 
 
-@app.patch("/api/requests/{req_id}/status")
+@app.get("/api/requests/{req_id}", response_model=schemas.PickupRequestResponse)
+def get_single_request(req_id: int, db: Session = Depends(get_db)):
+    """Return a single request by ID — used by the track-by-ID search."""
+    req = db.query(models.PickupRequest).filter(models.PickupRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail=f"Request #{req_id} not found.")
+    return req
+
+
+@app.post("/api/requests/{req_id}/cancel")
+def cancel_request(req_id: int, db: Session = Depends(get_db)):
+    """User-facing cancel — only allows Pending → Cancelled, no token required."""
+    req = db.query(models.PickupRequest).filter(models.PickupRequest.id == req_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail=f"Request #{req_id} not found.")
+    if req.status != "Pending":
+        raise HTTPException(
+            status_code=400,
+            detail="Only Pending requests can be cancelled by users.",
+        )
+    req.status = "Cancelled"
+    db.commit()
+    return {"id": req.id, "status": req.status}
+
+
+# ─── ADMIN ENDPOINTS (require X-Admin-Token header) ───────────────────────────
+
+@app.patch(
+    "/api/requests/{req_id}/status",
+    dependencies=[Depends(verify_admin_token)],
+)
 def update_request_status(
     req_id: int,
     update: schemas.StatusUpdate,
@@ -139,7 +205,11 @@ def update_request_status(
     return {"id": req.id, "status": req.status}
 
 
-@app.get("/admin/requests", response_model=list[schemas.AdminPickupRequestResponse])
+@app.get(
+    "/admin/requests",
+    response_model=list[schemas.AdminPickupRequestResponse],
+    dependencies=[Depends(verify_admin_token)],
+)
 def get_all_requests(db: Session = Depends(get_db)):
     requests = (
         db.query(models.PickupRequest)

@@ -185,11 +185,11 @@
                 return;
             }
 
-            // Correct — set admin session and redirect
+            // Correct — store session with the entered code as the API token
             document.getElementById('admin-error').style.display = 'none';
             btn.disabled    = true;
             btn.textContent = 'Redirecting…';
-            setAdminUser();
+            setAdminUser(code);
             location.replace('admin.html');
         }
 

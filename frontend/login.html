@@ -58,10 +58,9 @@
 
     </div>
 
+    <script src="auth.js"></script>
     <script>
-        // ─── Shared helpers ───────────────────────────────────────────────────
-        const AUTH_KEY  = 'eco_user';
-        const API_BASE  = 'https://e-waste-pickup-platform-j428.onrender.com';
+        // AUTH_STORAGE_KEY and API_BASE come from auth.js (loaded above).
 
         // Strip non-digits live so users can't type letters into phone fields
         document.addEventListener('DOMContentLoaded', () => {
@@ -78,15 +77,7 @@
         const returnTo = params.get('returnTo') || 'index.html';
 
         // Redirect if already logged in
-        try {
-            if (JSON.parse(localStorage.getItem(AUTH_KEY))) {
-                location.replace(returnTo);
-            }
-        } catch (_) {}
-
-        function storeUser(user) {
-            localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-        }
+        if (getUser()) location.replace(returnTo);
 
         function showErr(el, msg) {
             el.textContent = msg;
@@ -162,7 +153,7 @@
 
                 const data = await res.json();
                 const name = data.user ? data.user.full_name : (data[0] ? data[0].full_name : 'User');
-                storeUser({ full_name: name, phone_number: digits });
+                setUser({ full_name: name, phone_number: digits });
                 location.replace(returnTo);
 
             } catch (err) {

@@ -2,8 +2,6 @@ from pydantic import BaseModel, Field
 from typing import Optional, Literal
 from datetime import datetime
 
-VALID_CATEGORIES = ('Mobile', 'Laptop', 'Accessories', 'Large Appliances')
-
 # Shape of data received from the frontend form
 class PickupRequestCreate(BaseModel):
     full_name:          str = Field(..., min_length=2, max_length=100)

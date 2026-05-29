@@ -107,8 +107,18 @@ function getAdminUser() {
     catch (_) { return null; }
 }
 
-function setAdminUser() {
-    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify({ authenticated: true, ts: Date.now() }));
+function setAdminUser(token) {
+    localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify({
+        authenticated: true,
+        token: token || '',
+        ts: Date.now(),
+    }));
+}
+
+// Returns the token stored at login so fetch calls can send X-Admin-Token.
+function getAdminToken() {
+    const admin = getAdminUser();
+    return (admin && admin.token) ? admin.token : '';
 }
 
 function clearAdminUser() {
@@ -119,6 +129,34 @@ function requireAdminAuth() {
     if (getAdminUser()) return true;
     location.replace('admin-login.html');
     return false;
+}
+
+// ─── Cold-start UX helpers ────────────────────────────────────────────────────
+// Show a non-blocking banner if the backend takes > 4 s to respond.
+// Call showColdStartHint() before a fetch, clearColdStartHint() in finally.
+
+function showColdStartHint(delayMs) {
+    return setTimeout(() => {
+        if (document.getElementById('eco-coldstart-msg')) return;
+        const msg = document.createElement('div');
+        msg.id = 'eco-coldstart-msg';
+        msg.style.cssText = [
+            'position:fixed', 'bottom:24px', 'left:50%', 'transform:translateX(-50%)',
+            'background:rgba(15,23,42,0.96)', 'border:1px solid rgba(255,255,255,0.12)',
+            'color:#94a3b8', 'padding:14px 22px', 'border-radius:12px',
+            'font-size:0.82rem', 'z-index:9999', 'text-align:center',
+            'max-width:360px', 'line-height:1.6', "font-family:'Outfit',sans-serif",
+            'box-shadow:0 8px 32px rgba(0,0,0,0.4)',
+        ].join(';');
+        msg.innerHTML = '&#9203; Backend is waking up on Render free tier.<br>First request may take 30&ndash;60 seconds.';
+        document.body.appendChild(msg);
+    }, delayMs || 4000);
+}
+
+function clearColdStartHint(timerId) {
+    clearTimeout(timerId);
+    const msg = document.getElementById('eco-coldstart-msg');
+    if (msg) msg.remove();
 }
 
 // ─── Admin-only navbar ────────────────────────────────────────────────────────

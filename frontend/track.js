@@ -159,10 +159,9 @@ cancelConfirmBtn.addEventListener('click', async () => {
     cancelConfirmBtn.textContent  = 'Cancelling…';
 
     try {
-        const res = await fetch(`${API_BASE}/api/requests/${id}/status`, {
-            method: 'PATCH',
+        const res = await fetch(`${API_BASE}/api/requests/${id}/cancel`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'Cancelled' }),
         });
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
@@ -223,11 +222,13 @@ function handleSearch() {
 
 async function fetchByPhone(phone) {
     startLoading();
+    const coldStart = showColdStartHint();
 
     try {
         const response = await fetch(
             `${API_BASE}/api/requests/track?phone=${encodeURIComponent(phone)}`
         );
+        clearColdStartHint(coldStart);
 
         if (response.status === 404) { showState('empty'); return; }
         if (!response.ok) throw new Error(`Server returned status ${response.status}.`);
@@ -255,6 +256,7 @@ async function fetchByPhone(phone) {
         showState('results');
 
     } catch (err) {
+        clearColdStartHint(coldStart);
         showFetchError(err);
     } finally {
         searchBtn.disabled = false;
@@ -265,16 +267,16 @@ async function fetchByPhone(phone) {
 
 async function fetchById(id) {
     startLoading();
+    const coldStart = showColdStartHint();
 
     try {
-        const response = await fetch(`${API_BASE}/admin/requests`);
+        const response = await fetch(`${API_BASE}/api/requests/${id}`);
+        clearColdStartHint(coldStart);
+
+        if (response.status === 404) { showState('empty'); return; }
         if (!response.ok) throw new Error(`Server returned status ${response.status}.`);
 
-        const all   = await response.json();
-        const found = all.find(r => r.id === id);
-
-        if (!found) { showState('empty'); return; }
-
+        const found = await response.json();
         allRequests = [found];
         filterTabs.classList.add('hidden');
         const pts = found.status === 'Completed' ? (found.estimated_points || 0) : 0;
@@ -282,6 +284,7 @@ async function fetchById(id) {
         showState('results');
 
     } catch (err) {
+        clearColdStartHint(coldStart);
         showFetchError(err);
     } finally {
         searchBtn.disabled = false;
