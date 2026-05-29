@@ -1704,17 +1704,19 @@
                 ];
 
                 const rows = allRequests.map(req => {
+                    // localStorage fallback for requests submitted before the backend
+                    // started persisting these fields to the database.
                     const b = getLocalBooking(req.id);
                     return [
                         req.id,
-                        b.full_name            || '',
-                        b.phone_number         || '',
+                        req.full_name          || b.full_name          || '',
+                        req.phone_number       || b.phone_number       || '',
                         req.address            || '',
                         req.category           || '',
-                        b.estimated_quantity   != null ? b.estimated_quantity : '',
-                        req.estimated_points   != null ? req.estimated_points : '',
-                        b.preferred_date       || '',
-                        b.time_slot            || '',
+                        req.estimated_quantity != null ? req.estimated_quantity : (b.estimated_quantity != null ? b.estimated_quantity : ''),
+                        req.estimated_points   != null ? req.estimated_points   : '',
+                        req.preferred_date     || b.preferred_date     || '',
+                        req.time_slot          || b.time_slot          || '',
                         req.status             || '',
                         req.submitted_at       || '',
                     ].map(csvCell);

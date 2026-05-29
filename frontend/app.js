@@ -83,18 +83,23 @@ form.addEventListener('submit', async function (event) {
     }
 
     // Validate preferred date: must be at least tomorrow
-    const prefDateVal = document.getElementById('preferred-date')?.value;
-    if (prefDateVal) {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = localDateStr(tomorrow);
-        if (prefDateVal < tomorrowStr) {
-            if (dateErrorEl) {
-                dateErrorEl.textContent = 'Pickup must be scheduled at least 1 day in advance.';
-                dateErrorEl.classList.remove('hidden');
-            }
-            return;
+    let prefDateVal = document.getElementById('preferred-date')?.value || '';
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = localDateStr(tomorrow);
+    if (!prefDateVal) {
+        // Mobile browsers (iOS Safari, older Android) sometimes lose a
+        // programmatically-set date value between DOMContentLoaded and submit.
+        // Fall back to tomorrow, which matches the pre-filled field default.
+        prefDateVal = tomorrowStr;
+        const dateEl = document.getElementById('preferred-date');
+        if (dateEl) dateEl.value = prefDateVal;
+    } else if (prefDateVal < tomorrowStr) {
+        if (dateErrorEl) {
+            dateErrorEl.textContent = 'Pickup must be scheduled at least 1 day in advance.';
+            dateErrorEl.classList.remove('hidden');
         }
+        return;
     }
 
     // Loading state
@@ -108,8 +113,8 @@ form.addEventListener('submit', async function (event) {
         address: document.getElementById('address').value,
         category: document.getElementById('category').value,
         estimated_quantity: parseInt(document.getElementById('quantity').value),
-        preferred_date: prefDateVal || null,
-        time_slot: document.getElementById('time-slot')?.value || null,
+        preferred_date: prefDateVal,
+        time_slot: document.getElementById('time-slot')?.value || 'Morning',
     };
 
     try {
@@ -156,12 +161,10 @@ form.addEventListener('submit', async function (event) {
         document.getElementById('req-id').textContent = responseData.id;
         document.getElementById('reward-points').textContent = responseData.estimated_points;
 
-        // Persist booking + customer details locally so admin modal can display them
-        const prefDate = document.getElementById('preferred-date')?.value;
-        const timeSlot = document.getElementById('time-slot')?.value;
+        // Persist booking details as a fallback for pre-migration requests in admin modal
         localStorage.setItem(`eco_booking_${responseData.id}`, JSON.stringify({
-            preferred_date:     prefDate                        || null,
-            time_slot:          timeSlot                        || null,
+            preferred_date:     requestData.preferred_date      || null,
+            time_slot:          requestData.time_slot           || null,
             full_name:          requestData.full_name           || null,
             phone_number:       requestData.phone_number        || null,
             estimated_quantity: requestData.estimated_quantity  || null,
