@@ -82,7 +82,7 @@ Built as a solo full-stack project to demonstrate end-to-end product development
 | Layer | Technology |
 |---|---|
 | **Backend** | Python 3.12 · FastAPI · Uvicorn |
-| **Database** | SQLite · SQLAlchemy 2.x ORM · Pydantic v2 |
+| **Database** | PostgreSQL (Render) · SQLAlchemy 2.x ORM · Pydantic v2 |
 | **Frontend** | HTML5 · CSS3 · Vanilla JavaScript (no framework) |
 | **Deployment** | Render (backend) · Vercel (frontend) |
 
@@ -102,14 +102,14 @@ No frontend build step — the entire UI is plain static files, which eliminates
 │  admin.html   → Admin       │        │  GET  /admin/requests           │
 │  auth.js      → Shared auth │        │                                 │
 │  app.js       → Form logic  │        │  FastAPI + SQLAlchemy           │
-│  track.js     → Timeline    │        │  SQLite database                │
+│  track.js     → Timeline    │        │  PostgreSQL (Render managed)    │
 └─────────────────────────────┘        └─────────────────────────────────┘
 ```
 
 **Key design decisions:**
 - `auth.js` is a shared module loaded by every page — it exposes `API_BASE`, `getUser()`, `requireAuth()`, and `injectNavbar()`, keeping auth and navigation logic in one place.
 - The backend normalises Indian phone numbers (strips `+91`, country code, STD prefix) so `9876543210`, `+919876543210`, and `09876543210` all resolve to the same user.
-- Admin status changes call `PATCH /api/requests/{id}/status` and commit to SQLite — no localStorage overrides, so every browser and device sees the same state.
+- Admin status changes call `PATCH /api/requests/{id}/status` and commit to PostgreSQL — no localStorage overrides, so every browser and device sees the same state.
 - Pydantic v2 `Literal` type enforces valid categories at the schema layer before any database interaction.
 
 ---
@@ -260,7 +260,8 @@ uvicorn main:app --reload
 
 The API starts at `http://127.0.0.1:8000`.
 Interactive API docs: `http://127.0.0.1:8000/docs`
-The SQLite database is created automatically — no setup required.
+
+**Database:** Locally the app defaults to SQLite (`ewaste.db`) with no setup required. In production, set the `DATABASE_URL` environment variable to your PostgreSQL connection string and the app switches automatically.
 
 ### 2. Frontend
 
@@ -297,12 +298,19 @@ ECO-ADMIN-2024
 
 | Service | Purpose | Notes |
 |---|---|---|
-| **Render** | FastAPI backend | Free tier; set start command to `uvicorn main:app --host 0.0.0.0 --port $PORT` |
+| **Render** | FastAPI backend + PostgreSQL | Set start command to `uvicorn main:app --host 0.0.0.0 --port $PORT`; Root Directory: `backend` |
 | **Vercel** | Static frontend | Connect GitHub repo; set publish directory to `frontend`; no build command needed |
 
 After deploying the backend, update `API_BASE` in `frontend/auth.js` to your Render URL before deploying to Vercel.
 
-> **SQLite on Render:** The free tier uses an ephemeral filesystem — data is cleared on restart. For persistent storage, add a Render Disk ($1/mo) and set `DATABASE_URL` as an environment variable. The app reads `DATABASE_URL` from the environment automatically via `database.py`.
+**Environment variables required on the Render Web Service:**
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | Internal connection string from your Render PostgreSQL instance (e.g. `postgresql://user:pass@host/dbname`) |
+| `PYTHON_VERSION` | `3.12.9` |
+
+> **PostgreSQL on Render:** Create a Render PostgreSQL database (free tier available) and copy its **Internal Database URL** into `DATABASE_URL` on the Web Service. `database.py` reads this variable automatically — no code changes needed for different environments. Tables are created on first startup via `create_all()`.
 
 ---
 
@@ -312,7 +320,7 @@ After deploying the backend, update `API_BASE` in `frontend/auth.js` to your Ren
 - **SMS / email notifications** — alert users when their request status changes using Twilio or SendGrid
 - **Pagination** — cursor-based pagination on the admin endpoint to handle high request volumes
 - **Analytics dashboard** — charts for request volume over time, category breakdown, and points distributed
-- **PostgreSQL migration** — swap SQLite for Postgres on Render for production-grade reliability (the app is already environment-variable ready)
+- **Rate limiting** — per-IP throttling on the POST endpoint using `slowapi` to prevent abuse (placeholder moved; PostgreSQL migration already complete)
 - **Rate limiting** — per-IP throttling on the POST endpoint using `slowapi` to prevent abuse
 - **Mobile app** — React Native or Flutter client on top of the same FastAPI backend
 - **Webhook / push notifications** — real-time status updates without manual page refresh
@@ -325,6 +333,7 @@ After deploying the backend, update `API_BASE` in `frontend/auth.js` to your Ren
 - Managing cross-device state consistency: migrating from localStorage-only overrides to a proper `PATCH` endpoint that commits to the database
 - Writing safe database migrations without Alembic: startup-time `ALTER TABLE` with `try/except` for columns added after initial deploy
 - Phone number normalisation across Indian formats (`+91`, `091`, bare 10-digit)
+- Migrating from SQLite to Render-managed PostgreSQL using `DATABASE_URL` environment variable switching with zero frontend changes
 - Deploying a decoupled frontend/backend across two cloud platforms and wiring them together via CORS and environment-aware configuration
 - Producing RFC 4180-compliant CSV with a UTF-8 BOM for compatibility with both Excel and Google Sheets
 
@@ -339,7 +348,7 @@ After deploying the backend, update `API_BASE` in `frontend/auth.js` to your Ren
 
 <div align="center">
 
-*Built with FastAPI, SQLite, and plain HTML/CSS/JS — no frontend framework.*
+*Built with FastAPI, PostgreSQL, and plain HTML/CSS/JS — no frontend framework.*
 
 ⭐ Star this repo if you found it useful!
 
