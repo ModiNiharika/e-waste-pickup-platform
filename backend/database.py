@@ -3,16 +3,24 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# 1. Look for a .env file and load its contents into the computer's memory
 load_dotenv()
 
-# 2. Ask the Operating System for the DATABASE_URL. 
-# If it can't find it, use the string on the right as a safe backup.
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ewaste.db")
+database_url = os.getenv("DATABASE_URL", "sqlite:///./ewaste.db")
 
-# 3. Create the engine and session as usual
+# Render's PostgreSQL connection strings use the legacy "postgres://" scheme.
+# SQLAlchemy 2.x requires "postgresql://" — rewrite it transparently here.
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+is_sqlite = database_url.startswith("sqlite")
+
+# check_same_thread is a SQLite-only argument — passing it to psycopg2 raises TypeError.
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    database_url,
+    connect_args=connect_args,
+    pool_pre_ping=True,   # Ping before using a pooled connection; reconnects if dropped.
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
